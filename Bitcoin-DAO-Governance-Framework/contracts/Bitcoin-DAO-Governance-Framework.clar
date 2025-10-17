@@ -127,3 +127,46 @@
     implementation-details: (optional (string-ascii 500))
   }
 )
+
+;; Emergency and Governance Controls
+(define-data-var emergency-stop-activated bool false)
+(define-data-var governance-pause-threshold uint u3)
+(define-data-var total-governance-tokens uint u0)
+(define-data-var next-proposal-id uint u0)
+(define-data-var next-upgrade-id uint u0)
+
+;; Treasury Management System
+(define-public (create-treasury-account
+  (initial-balance uint)
+  (allowed-categories (list 5 (string-ascii 50)))
+)
+  (begin
+    (asserts! (not (var-get emergency-stop-activated)) ERR_EMERGENCY_STOP)
+    
+    (map-set treasury-accounts 
+      { account: tx-sender }
+      {
+        balance: initial-balance,
+        allowed-categories: allowed-categories,
+        last-withdrawal-block: stacks-block-height
+      }
+    )
+    
+    (ok true)
+  ))
+
+;; Governance Parameters Management
+(define-private (get-governance-parameters)
+  {
+    min-proposal-voting-power: (default-to u100 
+      (get value (map-get? governance-parameters { param-name: "min-proposal-voting-power" }))),
+    proposal-creation-delay: (default-to u144 
+      (get value (map-get? governance-parameters { param-name: "proposal-creation-delay" }))),
+    proposal-voting-duration: (default-to u1440 
+      (get value (map-get? governance-parameters { param-name: "proposal-voting-duration" }))),
+    proposal-execution-delay: (default-to u288 
+      (get value (map-get? governance-parameters { param-name: "proposal-execution-delay" }))),
+    treasury-withdrawal-cooldown: (default-to u576 
+      (get value (map-get? governance-parameters { param-name: "treasury-withdrawal-cooldown" })))
+  }
+)

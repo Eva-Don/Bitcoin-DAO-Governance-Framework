@@ -170,3 +170,50 @@
       (get value (map-get? governance-parameters { param-name: "treasury-withdrawal-cooldown" })))
   }
 )
+
+;; Voter History Management
+(define-private (update-voter-proposal-history
+  (voter principal)
+  (proposal-id uint)
+)
+  (let (
+    (current-profile (unwrap-panic (map-get? voter-profiles { voter: voter })))
+  )
+  (map-set voter-profiles
+    { voter: voter }
+    (merge current-profile {
+      reputation-score: (+ (get reputation-score current-profile) u10)
+    })
+  )
+))
+
+(define-private (update-voter-vote-history
+  (voter principal)
+  (proposal-id uint)
+  (vote-direction bool)
+  (voting-power uint)
+)
+  (let (
+    (current-profile (unwrap-panic (map-get? voter-profiles { voter: voter })))
+    (new-vote-history { 
+      proposal-id: proposal-id, 
+      vote-direction: vote-direction, 
+      voting-power: voting-power 
+    })
+  )
+  (map-set voter-profiles
+    { voter: voter }
+    (merge current-profile {
+      vote-history: (unwrap-panic 
+        (as-max-len? 
+          (append (get vote-history current-profile) new-vote-history) 
+          u20
+        )
+      ),
+      reputation-score: (if vote-direction 
+        (+ (get reputation-score current-profile) u5)
+        (- (get reputation-score current-profile) u2)
+      )
+    })
+  )
+))

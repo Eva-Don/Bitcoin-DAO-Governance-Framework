@@ -432,3 +432,46 @@
     (ok true)
   )
 )
+
+;; Community Fund Functions
+(define-public (submit-fund-request
+  (requested-amount uint)
+  (category (string-ascii 50))
+  (milestones (list 5 {
+    description: (string-ascii 100),
+    amount: uint,
+    completed: bool
+  }))
+)
+  (let (
+    (fund-id (var-get next-fund-id))
+    (params (get-governance-parameters))
+    (voter-profile (unwrap! (map-get? voter-profiles { voter: tx-sender }) ERR_NOT_ACTIVE_MEMBER))
+    (tier-voting-threshold (default-to u10 
+      (get value (map-get? governance-parameters { param-name: "fund-request-votes-needed" }))))
+  )
+    (asserts! (not (var-get emergency-stop-activated)) ERR_EMERGENCY_STOP)
+    (asserts! (>= (get reputation-score voter-profile) u50) ERR_INSUFFICIENT_VOTING_POWER)
+    (asserts! (> requested-amount u0) ERR_ZERO_VOTE_POWER)
+    
+    ;; Create fund request
+    (map-set community-fund-proposals
+      { fund-id: fund-id }
+      {
+        applicant: tx-sender,
+        requested-amount: requested-amount,
+        category: category,
+        milestones: milestones,
+        approved: false,
+        votes-needed: tier-voting-threshold,
+        votes-received: u0,
+        proposal-id: u0
+      }
+    )
+    
+    ;; Increment fund ID counter
+    (var-set next-fund-id (+ fund-id u1))
+    
+    (ok fund-id)
+  )
+)

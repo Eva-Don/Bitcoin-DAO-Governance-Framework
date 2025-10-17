@@ -217,3 +217,73 @@
     })
   )
 ))
+
+;; Initial Setup and Configuration
+(define-public (register-voter
+  (initial-voting-power uint)
+  (specialized-categories (optional (list 5 { 
+    category: (string-ascii 50), 
+    weight-multiplier: uint 
+  })))
+)
+  (begin
+    (asserts! (> initial-voting-power u0) ERR_INSUFFICIENT_VOTING_POWER)
+    
+    (map-set voter-profiles
+      { voter: tx-sender }
+      {
+        base-voting-power: initial-voting-power,
+        delegated-voting-power: u0,
+        delegated-to: none,
+        total-delegated-from: (list),
+        last-voting-block: stacks-block-height,
+        reputation-score: u0,
+        slashing-points: u0,
+        vote-history: (list),
+        specialized-voting-weights: (default-to (list) specialized-categories)
+      }
+    )
+    
+    ;; Increment total governance tokens
+    (var-set total-governance-tokens 
+      (+ (var-get total-governance-tokens) initial-voting-power)
+    )
+    
+    (ok true)
+  )
+)
+
+;; Initialize Governance Parameters
+(map-set governance-parameters 
+  { param-name: "min-proposal-voting-power" }
+  { 
+    value: u100, 
+    last-updated-block: u0, 
+    update-cooldown: u1440 
+  }
+)
+
+(map-set governance-parameters 
+  { param-name: "proposal-creation-delay" }
+  { 
+    value: u144, 
+    last-updated-block: u0, 
+    update-cooldown: u1440 
+  }
+)
+
+;; Initial Configuration for Contract Owner
+(map-set voter-profiles 
+  { voter: CONTRACT_OWNER }
+  {
+    base-voting-power: u10000,
+    delegated-voting-power: u0,
+    delegated-to: none,
+    total-delegated-from: (list),
+    last-voting-block: u0,
+    reputation-score: u100,
+    slashing-points: u0,
+    vote-history: (list),
+    specialized-voting-weights: (list)
+  }
+)
